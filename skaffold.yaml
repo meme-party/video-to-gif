@@ -1,0 +1,28 @@
+apiVersion: skaffold/v4beta8
+kind: Config
+metadata:
+  name: video-to-gif
+build:
+  artifacts:
+  - image: video-to-gif
+    context: .
+    docker:
+      dockerfile: Dockerfile
+deploy:
+  kubectl:
+    manifests:
+    - k8s/configmap.yaml
+    - k8s/deployment.yaml
+    - k8s/service.yaml
+    - k8s/cert-manager-issuer.yaml  # cert-manager 설정 추가
+    - k8s/ingress.yaml
+profiles:
+  - name: dev
+    patches:
+      - op: replace
+        path: /build/artifacts/0/docker/dockerfile
+        value: Dockerfile
+  - name: prod
+    build:
+      tagPolicy:
+        sha256: {}

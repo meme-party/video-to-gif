@@ -1,0 +1,9 @@
+[flake8]
+max-line-length = 88
+extend-ignore = E203, W503, D100, D104, D401, D403, D400, D200
+exclude = .git,__pycache__,dist,build,.env,.venv,venv
+per-file-ignores =
+    __init__.py: F401, D104
+    app/main.py: E302, F401, D103
+    app/api/endpoints/conversion.py: F401, D103
+    app/services/video_conversion.py: F401, E302

@@ -1,0 +1,24 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-to-gif
+    ports:
+      - "8083:8083"
+    tmpfs:
+      - /tmp  # 임시 디렉토리에 tmpfs 마운트 (메모리 기반 임시 파일시스템)
+    volumes:
+      - ./app:/app  # 개발 시에만 사용, 프로덕션에서는 제거
+    restart: unless-stopped
+    environment:
+      - MAX_UPLOAD_SIZE_MB=50
+      - DEFAULT_GIF_WIDTH=320
+      - DEFAULT_GIF_FPS=10
+      - APP_DOMAIN=video-to-gif.memez.party
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
