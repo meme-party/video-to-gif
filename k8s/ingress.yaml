@@ -1,18 +1,32 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: video-to-gif-tls
+  namespace: video-to-gif
+spec:
+  secretName: video-to-gif-tls
+  dnsNames:
+  - video-to-gif.memez.party
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: video-to-gif-ingress
   namespace: video-to-gif
   annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"  # 업로드 크기 제한 증가
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"  # 타임아웃 증가 (초)
     nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # Let's Encrypt 인증서 발급자 설정 (cert-manager 사용 시)
 spec:
   tls:
   - hosts:
     - video-to-gif.memez.party
-    secretName: video-to-gif-tls  # TLS 인증서 저장용 시크릿 이름
+    secretName: video-to-gif-tls
   rules:
   - host: video-to-gif.memez.party
     http:
