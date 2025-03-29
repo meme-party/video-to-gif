@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-to-gif
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: video-to-gif
+  template:
+    metadata:
+      labels:
+        app: video-to-gif
+    spec:
+      containers:
+      - name: video-to-gif
+        image: memezparty/video-to-gif:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8083
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+        envFrom:
+        - configMapRef:
+            name: video-to-gif-config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 15
+          periodSeconds: 20

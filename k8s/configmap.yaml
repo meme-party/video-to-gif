@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: video-to-gif-config
+data:
+  APP_NAME: "동영상 GIF 변환기"
+  APP_VERSION: "0.1.0"
+  MAX_UPLOAD_SIZE_MB: "50"
+  DEFAULT_GIF_WIDTH: "320"
+  DEFAULT_GIF_FPS: "10"
+  GIF_CLEANUP_DELAY: "300"  # 5분 후 GIF 파일 자동 삭제
+  APP_DOMAIN: "video-to-gif.memez.party"  # 도메인 설정
