@@ -9,9 +9,9 @@ import tempfile
 import time
 import uuid
 
-from fastapi import BackgroundTasks, FastAPI, File, Request, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 # 서비스 임포트
@@ -37,7 +37,7 @@ app.add_middleware(
 # 임시 디렉토리 설정
 TEMP_DIR = tempfile.gettempdir()
 
-# 정적 파일 서빙을 위한 설정 - HTML만 서빙하도록 변경
+# 정적 파일 서빙을 위한 설정
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # GIF 캐시 저장소 (메모리 내 임시 저장)
@@ -52,8 +52,9 @@ gif_cache = {}
 async def convert_video(
     background_tasks: BackgroundTasks,
     video: UploadFile = File(...),
-    width: int = 320,
-    fps: int = 10,
+    width: int = Form(320),
+    fps: int = Form(10),
+    quality: int = Form(80),
     max_size_mb: int = 50,
 ):
     """
@@ -64,6 +65,7 @@ async def convert_video(
         video: 업로드된 동영상 파일
         width: GIF의 가로 너비 (픽셀)
         fps: GIF의 초당 프레임 수
+        quality: GIF 품질 (1-100, 낮을수록 파일 크기 감소)
         max_size_mb: 최대 허용 파일 크기 (MB)
 
     Returns:
@@ -75,6 +77,9 @@ async def convert_video(
 
     if file_size > max_size_mb * 1024 * 1024:
         return {"error": f"파일 크기가 {max_size_mb}MB를 초과합니다."}
+
+    # 품질 범위 확인 및 조정
+    quality = max(1, min(100, quality))
 
     # 임시 파일 생성
     file_id = str(uuid.uuid4())
@@ -93,8 +98,9 @@ async def convert_video(
         convert_video_to_gif,
         input_path,
         output_path,
-        width,
-        fps,
+        width=width,
+        fps=fps,
+        quality=quality,
         cleanup_delay=300,  # 5분 후 자동 삭제
     )
 
@@ -112,6 +118,37 @@ async def convert_video(
     }
 
 
+@app.get("/gif-info/{file_id}")
+async def get_gif_info(file_id: str):
+    """GIF 파일 정보를 반환합니다."""
+    # 캐시에서 GIF 정보 확인
+    if file_id not in gif_cache:
+        return JSONResponse(
+            status_code=404, content={"error": "요청한 GIF를 찾을 수 없습니다."}
+        )
+
+    gif_info = gif_cache[file_id]
+    file_path = gif_info["path"]
+
+    # 파일 존재 확인
+    if not os.path.exists(file_path):
+        return JSONResponse(
+            status_code=404,
+            content={"error": "GIF 파일이 아직 생성되지 않았거나 만료되었습니다."},
+        )
+
+    # 파일 크기 확인
+    file_size = os.path.getsize(file_path)
+
+    return {
+        "file_id": file_id,
+        "file_size": file_size,
+        "created_at": gif_info["created_at"],
+        "expires_at": gif_info["expires_at"],
+        "status": "ready",
+    }
+
+
 @app.get(
     "/gif/{file_id}",
     summary="변환된 GIF 조회",
@@ -125,26 +162,36 @@ async def get_gif(file_id: str):
         file_id: GIF 파일의 고유 ID
 
     Returns:
-        GIF 파일 스트림 또는 오류 메시지
+        GIF 파일 또는 오류 메시지
     """
     # 캐시에서 GIF 정보 확인
     if file_id not in gif_cache:
-        return {"error": "요청한 GIF를 찾을 수 없습니다."}
+        return JSONResponse(
+            status_code=404, content={"error": "요청한 GIF를 찾을 수 없습니다."}
+        )
 
     gif_info = gif_cache[file_id]
     file_path = gif_info["path"]
 
     # 파일 존재 확인
     if not os.path.exists(file_path):
-        return {"error": "GIF 파일이 아직 생성되지 않았거나 만료되었습니다."}
+        return JSONResponse(
+            status_code=404,
+            content={"error": "GIF 파일이 아직 생성되지 않았거나 만료되었습니다."},
+        )
 
-    # 파일 스트리밍으로 반환 (다운로드 후 삭제되지 않도록)
-    def iterfile():
-        with open(file_path, mode="rb") as file_like:
-            yield from file_like
+    # 파일 크기 확인 (로깅 및 디버깅용)
+    file_size = os.path.getsize(file_path) / 1024  # KB
+    print(f"Serving GIF: {file_id}, Size: {file_size:.2f} KB")
 
-    # 파일 반환 (Content-Disposition 헤더 추가하지 않음 - 다운로드 안됨)
-    return StreamingResponse(iterfile(), media_type="image/gif")
+    # 캐시 제어 헤더로 브라우저 캐싱 활성화
+    headers = {
+        "Cache-Control": "public, max-age=3600",  # 1시간 캐싱
+        "Content-Type": "image/gif",
+    }
+
+    # 파일 직접 반환
+    return FileResponse(file_path, media_type="image/gif", headers=headers)
 
 
 @app.get(
@@ -164,14 +211,19 @@ async def download_gif(file_id: str):
     """
     # 캐시에서 GIF 정보 확인
     if file_id not in gif_cache:
-        return {"error": "요청한 GIF를 찾을 수 없습니다."}
+        return JSONResponse(
+            status_code=404, content={"error": "요청한 GIF를 찾을 수 없습니다."}
+        )
 
     gif_info = gif_cache[file_id]
     file_path = gif_info["path"]
 
     # 파일 존재 확인
     if not os.path.exists(file_path):
-        return {"error": "GIF 파일이 아직 생성되지 않았거나 만료되었습니다."}
+        return JSONResponse(
+            status_code=404,
+            content={"error": "GIF 파일이 아직 생성되지 않았거나 만료되었습니다."},
+        )
 
     # 다운로드를 위한 응답 생성
     return FileResponse(
