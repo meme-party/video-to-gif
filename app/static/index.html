@@ -371,12 +371,14 @@
 
             // 변환 완료 확인 함수
             function checkGifStatus() {
-                fetch(`/gif/${gifId}`)
-                    .then(response => {
-                        if (response.ok) {
+                fetch(`/gif-info/${gifId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'ready') {
                             // GIF가 생성되었으면 표시
                             const timestamp = new Date().getTime();
-                            previewImg.src = `/gif/${gifId}`;
+                            // 캐시 방지를 위해 타임스태프 추가
+                            previewImg.src = `/gif/${gifId}?t=${timestamp}`;
 
                             // 이미지 로드 이벤트
                             previewImg.onload = function() {
@@ -386,23 +388,20 @@
                                 placeholder.style.display = 'none';
 
                                 // 파일 크기 표시
-                                const fileSize = response.headers.get('content-length');
-                                if (fileSize) {
-                                    fileSizeInfo.textContent = `파일 크기: ${formatFileSize(parseInt(fileSize))}`;
+                                if (data.file_size) {
+                                    fileSizeInfo.textContent = `파일 크기: ${formatFileSize(data.file_size)}`;
                                 }
                             };
 
                             // 이미지 로드 실패 시
                             previewImg.onerror = function() {
-                                // 잠시 후 다시 시도
+                                console.error('GIF 로드 실패');
+                                placeholder.textContent = 'GIF 로드 실패. 다시 시도합니다...';
                                 setTimeout(checkGifStatus, 2000);
                             };
-                        } else if (response.status === 404) {
+                        } else {
                             // 아직 생성 중이면 다시 확인
                             setTimeout(checkGifStatus, 2000);
-                        } else {
-                            // 기타 오류
-                            placeholder.textContent = '오류가 발생했습니다. 다시 시도해주세요.';
                         }
                     })
                     .catch(error => {
