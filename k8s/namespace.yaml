@@ -1,0 +1,10 @@
+# video-to-gif
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: video-to-gif
+  labels:
+    name: video-to-gif
+    app: video-to-gif
+    version: v1
+    environment: production

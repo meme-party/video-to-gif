@@ -2,6 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: video-to-gif-ingress
+  namespace: video-to-gif
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"  # 업로드 크기 제한 증가
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"  # 타임아웃 증가 (초)
