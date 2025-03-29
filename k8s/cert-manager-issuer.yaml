@@ -1,7 +1,7 @@
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: letsencrypt-prod
+  name: letsencrypt-prod-video-to-gif
   namespace: video-to-gif
 spec:
   acme:
@@ -11,7 +11,7 @@ spec:
     email: dev.shinkeonkim@gmail.com
     privateKeySecretRef:
       # ACME 계정 프라이빗 키가 저장될 시크릿 이름
-      name: letsencrypt-prod
+      name: lletsencrypt-prod-video-to-gif
     # HTTP-01 챌린지 방식 사용
     solvers:
     - http01:
