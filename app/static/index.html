@@ -376,7 +376,7 @@
                         if (response.ok) {
                             // GIF가 생성되었으면 표시
                             const timestamp = new Date().getTime();
-                            previewImg.src = `/gif/${gifId}?t=${timestamp}`;
+                            previewImg.src = `/gif/${gifId}`;
 
                             // 이미지 로드 이벤트
                             previewImg.onload = function() {
